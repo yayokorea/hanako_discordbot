@@ -1,55 +1,55 @@
 # Discord Gemini Bot
 
-This is a Discord bot that uses the Gemini API and DisTube to provide music playback and text-to-speech (TTS) functionality.
+Gemini API와 DisTube를 사용하여 음악 재생 및 TTS(텍스트 음성 변환) 기능을 제공하는 Discord 봇입니다.
 
-## Features
+## 주요 기능
 
-- Play music from YouTube
-- Skip the currently playing song
-- Stop music playback
-- Convert text to speech and play it in a voice channel
+- 유튜브 음악 재생
+- 현재 재생 중인 노래 건너뛰기
+- 음악 재생 중지
+- 텍스트를 음성으로 변환하여 음성 채널에서 재생
 
-## Commands
+## 명령어
 
-- `/play <url>`: Plays music from the provided YouTube URL.
-- `/skip`: Skips the currently playing song.
-- `/stop`: Stops music playback and disconnects the bot from the voice channel.
-- `/tts <text>`: Converts the provided text to speech and plays it in the voice channel.
+- `/play <url>`: 제공된 유튜브 URL의 음악을 재생합니다.
+- `/skip`: 현재 재생 중인 노래를 건너뜁니다.
+- `/stop`: 음악 재생을 중지하고 음성 채널에서 나갑니다.
+- `/tts <text>`: 입력된 텍스트를 음성으로 변환하여 음성 채널에서 재생합니다.
 
-## Installation
+## 설치 방법
 
-1.  Clone the repository:
+1.  저장소 복제:
     ```bash
     git clone https://github.com/yayokorea/discordbot.git
     cd discordbot
     ```
 
-2.  Install dependencies:
+2.  의존성 설치:
     ```bash
     npm install
     ```
 
-3.  Create a `config.js` file in the root directory and add your configuration:
+3.  루트 디렉토리에 `config.js` 파일을 생성하고 다음 설정을 추가합니다:
     ```javascript
     module.exports = {
         DISCORD_BOT_TOKEN: 'YOUR_DISCORD_BOT_TOKEN',
         GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
-        GUILD_ID: 'YOUR_GUILD_ID', // Optional: for development testing
+        GUILD_ID: 'YOUR_GUILD_ID', // 개발 테스트용 (선택 사항)
     };
     ```
 
-## Usage
+## 사용법
 
-1.  Start the bot:
+1.  봇 실행:
     ```bash
     node index.js
     ```
 
-2.  Invite the bot to your Discord server.
+2.  봇을 당신의 디스코드 서버에 초대하세요.
 
-3.  Use the slash commands in your server.
+3.  서버에서 슬래시 명령어를 사용하세요.
 
-## Dependencies
+## 의존성
 
 - [@discordjs/opus](https://www.npmjs.com/package/@discordjs/opus)
 - [@discordjs/voice](https://www.npmjs.com/package/@discordjs/voice)
