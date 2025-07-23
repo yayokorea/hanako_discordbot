@@ -74,10 +74,10 @@ client.on('interactionCreate', async interaction => {
         try {
             await interaction.deferReply();
 
-            const text = await generateResponse(chat, prompt);
+            const geminiResult = await generateResponse(chat, prompt);
 
             const outputPath = `./temp_tts_${guildId}.mp3`;
-            const gttsInstance = new gtts(text, 'ko');
+            const gttsInstance = new gtts(geminiResult.response, 'ko');
 
             await new Promise((resolve, reject) => {
                 gttsInstance.save(outputPath, (err, result) => {
@@ -108,7 +108,7 @@ client.on('interactionCreate', async interaction => {
                 });
             });
 
-            await sendLongMessage(interaction, text);
+            await sendLongMessage(interaction, geminiResult.response);
         } catch (error) {
             console.error('Gemini 콘텐츠 생성 또는 TTS 처리 중 오류가 발생했습니다:', error);
             await interaction.followUp('죄송합니다. 요청을 처리하는 중 오류가 발생했습니다.');
