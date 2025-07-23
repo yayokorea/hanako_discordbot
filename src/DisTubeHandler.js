@@ -20,7 +20,7 @@ class DisTubeHandler {
 
         this.distube.on('playSong', (queue, song) => {
             const embed = new EmbedBuilder()
-                .setColor(0x00FF00) // 초록색
+                .setColor(0x0099FF) // 파란색
                 .setDescription(`🎶 ${song.name} 재생을 시작했어요.`)
                 .addFields(
                     { name: '곡 길이', value: song.formattedDuration, inline: true },
@@ -146,9 +146,9 @@ class DisTubeHandler {
 
         try {
             const searchQuery = `${songName} Topic`;
-            const { stdout } = await execAsync(`yt-dlp "ytsearch:${searchQuery}" --dump-json`);
-            const videoInfo = JSON.parse(stdout);
-            const url = videoInfo.webpage_url;
+            const { stdout } = await execAsync(`yt-dlp "ytsearch:${searchQuery}" --get-id`);
+            const videoId = stdout.trim();
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
 
             await this.distube.play(voiceChannel, url, {
                 member: message.member,
