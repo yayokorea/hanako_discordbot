@@ -96,7 +96,8 @@ class DisTubeHandler {
         }
 
         try {
-            const { stdout } = await execAsync(`yt-dlp "ytsearch:${songName}" --dump-json`);
+            const searchQuery = `${songName} Topic`;
+            const { stdout } = await execAsync(`yt-dlp "ytsearch:${searchQuery}" --dump-json`);
             const videoInfo = JSON.parse(stdout);
             const url = videoInfo.webpage_url;
 
