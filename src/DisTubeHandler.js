@@ -18,30 +18,28 @@ class DisTubeHandler {
         this.queue = new Map();
 
         this.distube.on('playSong', (queue, song) => {
-            queue.textChannel.send(`🎶 | 재생 시작: **${song.name}** - \`${song.formattedDuration}\`
-요청: ${song.user}`);
+            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration}) 재생 시작! 요청: ${song.user}`);
         });
 
         this.distube.on('addSong', (queue, song) => {
-            queue.textChannel.send(`🎶 | 큐에 추가됨: **${song.name}** - ${song.formattedDuration}
-요청: ${song.user}`);
+            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration})이(가) 재생 목록에 추가되었습니다. 요청: ${song.user}`);
         });
 
         this.distube.on('addList', (queue, playlist) => {
-            queue.textChannel.send(`🎶 | 재생 목록 추가됨: **${playlist.name}** (${playlist.songs.length} 곡)`);
+            queue.textChannel.send(`🎶 재생 목록 **${playlist.name}** (${playlist.songs.length}곡)이(가) 추가되었습니다.`);
         });
 
         this.distube.on('error', (channel, error) => {
             console.error('DisTube 오류:', error);
-            channel.send('오류가 발생했습니다.');
+            channel.send('음악 재생 중 오류가 발생했습니다.');
         });
 
         this.distube.on('empty', queue => {
-            queue.textChannel.send('음성 채널이 비어있어 채널을 나갑니다.');
+            queue.textChannel.send('음성 채널에 아무도 없어 연결을 종료합니다.');
         });
 
         this.distube.on('finish', queue => {
-            queue.textChannel.send('재생 목록이 비어있습니다.');
+            queue.textChannel.send('재생 목록이 끝났습니다.');
         });
     }
 
@@ -53,14 +51,14 @@ class DisTubeHandler {
             return interaction.reply({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
         }
 
-        await interaction.reply('음악을 재생합니다...');
+        await interaction.reply('음악을 재생 목록에 추가하고 있습니다...');
 
         try {
             await this.distube.play(voiceChannel, string, {
                 member: interaction.member,
                 textChannel: interaction.channel,
             });
-            interaction.editReply('요청을 처리했습니다.');
+            interaction.editReply('음악 재생 요청을 처리했습니다.');
         } catch (e) {
             console.error(e);
             interaction.editReply(`오류: ${e.message}`);
@@ -74,7 +72,7 @@ class DisTubeHandler {
         }
         try {
             await queue.skip();
-            interaction.reply('음악을 건너뛰었습니다.');
+            interaction.reply('현재 곡을 건너뛰었습니다.');
         } catch (e) {
             interaction.reply(`오류: ${e.message}`);
         }
@@ -126,7 +124,6 @@ class DisTubeHandler {
         }).slice(0, 10).join('\n');
 
         const replyMethod = interactionOrMessage.reply.bind(interactionOrMessage) || interactionOrMessage.channel.send.bind(interactionOrMessage.channel);
-        
         replyMethod(`**재생 목록**\n${songs}`);
     }
 }

@@ -72,7 +72,7 @@ async function generateResponse(chat, prompt) {
     const result = await chat.sendMessage(prompt);
     const response = await result.response;
     const text = response.text();
-    console.log("Gemini Raw Response:", text); // 응답 로깅
+    console.log("Gemini 원본 응답:", text); // 응답 로깅
     try {
         // Handle potential markdown code block fences
         const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
