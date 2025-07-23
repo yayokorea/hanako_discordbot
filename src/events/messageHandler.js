@@ -30,12 +30,18 @@ async function handleMessageCreate(message, client, distubeHandler) {
         return message.reply('무엇을 도와드릴까요?');
     }
 
+    message.channel.sendTyping(); // 입력 중 표시
+
     try {
         const chat = getChat(message.channel.id);
         const geminiResponse = await generateResponse(chat, prompt);
 
-        if (geminiResponse.intent === 'play_music' && geminiResponse.song) {
-            await distubeHandler.playSong(message, geminiResponse.song);
+        if (geminiResponse.intent === 'play_music') {
+            if (geminiResponse.url) {
+                await distubeHandler.playUrlFromMessage(message, geminiResponse.url);
+            } else if (geminiResponse.song) {
+                await distubeHandler.playSong(message, geminiResponse.song);
+            }
         } else if (geminiResponse.intent === 'stop_music') {
             await distubeHandler.stop({ 
                 guild: message.guild,

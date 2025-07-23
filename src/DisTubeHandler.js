@@ -225,6 +225,23 @@ class DisTubeHandler {
         }
     }
 
+    async playUrlFromMessage(message, url) {
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) {
+            return message.reply('음성 채널에 먼저 참여해주세요!');
+        }
+
+        try {
+            await this.distube.play(voiceChannel, url, {
+                member: message.member,
+                textChannel: message.channel,
+            });
+        } catch (e) {
+            console.error(e);
+            message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류가 발생했습니다: ${e.message}`)] });
+        }
+    }
+
     async showQueue(interactionOrMessage) {
         const queue = this.distube.getQueue(interactionOrMessage);
         if (!queue) {
