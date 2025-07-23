@@ -18,11 +18,11 @@ class DisTubeHandler {
         this.queue = new Map();
 
         this.distube.on('playSong', (queue, song) => {
-            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration}) 재생 시작! 요청: ${song.user}`);
+            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration}) 재생 시작!\n요청: ${song.user}`);
         });
 
         this.distube.on('addSong', (queue, song) => {
-            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration})이(가) 재생 목록에 추가되었습니다. 요청: ${song.user}`);
+            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration})이(가) 재생 목록에 추가되었습니다.\n요청: ${song.user}`);
         });
 
         this.distube.on('addList', (queue, playlist) => {

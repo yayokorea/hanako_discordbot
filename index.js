@@ -154,7 +154,6 @@ client.on('messageCreate', async message => {
             await message.reply(geminiResponse.response);
             await distubeHandler.playSong(message, geminiResponse.song);
         } else if (geminiResponse.intent === 'stop_music') {
-            await message.reply(geminiResponse.response);
             await distubeHandler.stop({ 
                 guild: message.guild,
                 reply: (msg) => message.reply(msg),
