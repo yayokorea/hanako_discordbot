@@ -40,6 +40,28 @@ const commands = [
         name: 'list',
         description: '현재 재생 목록을 표시합니다.',
     },
+    {
+        name: 'volume',
+        description: '음악 볼륨을 조절합니다. (0-100)',
+        options: [
+            {
+                name: 'level',
+                type: 4,
+                description: '볼륨 레벨 (0-100)',
+                required: true,
+                min_value: 0,
+                max_value: 100,
+            },
+        ],
+    },
+    {
+        name: 'bassboost',
+        description: '베이스 부스트를 켜거나 끕니다.',
+    },
+    {
+        name: 'karaoke',
+        description: '노래방 효과를 켜거나 끕니다.',
+    },
 ];
 
 const registerCommands = async (client) => {

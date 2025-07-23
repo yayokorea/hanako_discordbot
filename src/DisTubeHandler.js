@@ -138,6 +138,71 @@ class DisTubeHandler {
         interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription('음악 재생을 중지하고 음성 채널에서 나갑니다.')] });
     }
 
+    async setVolume(interaction) {
+        const newVolume = interaction.options.getInteger('level');
+        const queue = this.distube.getQueue(interaction);
+
+        if (!queue) {
+            return interaction.reply({ content: '재생 중인 음악이 없습니다.', ephemeral: true });
+        }
+
+        if (newVolume < 0 || newVolume > 100) {
+            return interaction.reply({ content: '볼륨은 0에서 100 사이로 설정해주세요.', ephemeral: true });
+        }
+
+        try {
+            queue.setVolume(newVolume);
+            interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription(`볼륨을 ${newVolume}%로 설정했습니다.`)] });
+        } catch (e) {
+            console.error(e);
+            interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`볼륨 설정 중 오류가 발생했습니다: ${e.message}`)] });
+        }
+    }
+
+    async toggleBassBoost(interaction) {
+        const queue = this.distube.getQueue(interaction);
+        if (!queue) {
+            return interaction.reply({ content: "현재 재생 중인 음악이 없습니다.", ephemeral: true });
+        }
+
+        try {
+            const bassboostOn = queue.filters.has("bassboost");
+
+            if (bassboostOn) {
+                await queue.filters.remove("bassboost");
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription(`베이스 부스트를 껐습니다.`)] });
+            } else {
+                await queue.filters.add("bassboost");
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`베이스 부스트를 켰습니다.`)] });
+            }
+        } catch (e) {
+            console.error(e);
+            interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`베이스 부스트 설정 중 오류가 발생했습니다: ${e.message}`)] });
+        }
+    }
+
+    async toggleKaraoke(interaction) {
+        const queue = this.distube.getQueue(interaction);
+        if (!queue) {
+            return interaction.reply({ content: "현재 재생 중인 음악이 없습니다.", ephemeral: true });
+        }
+
+        try {
+            const karaokeOn = queue.filters.has("karaoke");
+
+            if (karaokeOn) {
+                await queue.filters.remove("karaoke");
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription(`노래방 효과를 껐습니다.`)] });
+            } else {
+                await queue.filters.add("karaoke");
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`노래방 효과를 켰습니다.`)] });
+            }
+        } catch (e) {
+            console.error(e);
+            interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`노래방 효과 설정 중 오류가 발생했습니다: ${e.message}`)] });
+        }
+    }
+
     async playSong(message, songName) {
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) {

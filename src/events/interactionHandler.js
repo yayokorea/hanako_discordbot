@@ -19,6 +19,12 @@ async function handleInteractionCreate(interaction, distubeHandler) {
         await distubeHandler.stop(interaction);
     } else if (commandName === 'list') {
         await distubeHandler.showQueue(interaction);
+    } else if (commandName === 'volume') {
+        await distubeHandler.setVolume(interaction);
+    } else if (commandName === 'bassboost') {
+        await distubeHandler.toggleBassBoost(interaction);
+    } else if (commandName === 'karaoke') {
+        await distubeHandler.toggleKaraoke(interaction);
     } else if (commandName === 'tts') {
         const prompt = options.getString('text');
         if (!prompt) {
