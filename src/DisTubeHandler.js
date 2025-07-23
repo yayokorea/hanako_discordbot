@@ -11,7 +11,7 @@ class DisTubeHandler {
             emitNewSongOnly: true,
             emitAddSongWhenCreatingQueue: false,
             emitAddListWhenCreatingQueue: false,
-            plugins: [new YtDlpPlugin()],
+            plugins: [new YtDlpPlugin({ cookies: 'cookies.txt' })],
         });
 
         this.client = client;
