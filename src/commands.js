@@ -36,7 +36,10 @@ const commands = [
             },
         ],
     },
-    
+    {
+        name: 'list',
+        description: '현재 재생 목록을 표시합니다.',
+    },
 ];
 
 const registerCommands = async (client) => {

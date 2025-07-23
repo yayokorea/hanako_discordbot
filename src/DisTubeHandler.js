@@ -53,7 +53,7 @@ class DisTubeHandler {
             return interaction.reply({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
         }
 
-        await interaction.deferReply();
+        await interaction.reply('음악을 재생합니다...');
 
         try {
             await this.distube.play(voiceChannel, string, {
@@ -109,6 +109,25 @@ class DisTubeHandler {
             console.error(e);
             message.reply(`오류가 발생했습니다: ${e.message}`);
         }
+    }
+
+    async showQueue(interactionOrMessage) {
+        const queue = this.distube.getQueue(interactionOrMessage);
+        if (!queue) {
+            const reply = interactionOrMessage.reply.bind(interactionOrMessage);
+            return reply({ content: '재생 목록이 비어있습니다.', ephemeral: true });
+        }
+
+        const songs = queue.songs.map((song, index) => {
+            if (index === 0) {
+                return `**[현재 재생 중]** ${song.name} - \`${song.formattedDuration}\``;
+            }
+            return `**${index}.** ${song.name} - \`${song.formattedDuration}\``;
+        }).slice(0, 10).join('\n');
+
+        const replyMethod = interactionOrMessage.reply.bind(interactionOrMessage) || interactionOrMessage.channel.send.bind(interactionOrMessage.channel);
+        
+        replyMethod(`**재생 목록**\n${songs}`);
     }
 }
 

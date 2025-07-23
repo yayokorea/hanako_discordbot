@@ -36,6 +36,8 @@ client.on('interactionCreate', async interaction => {
         await distubeHandler.skip(interaction);
     } else if (commandName === 'stop') {
         await distubeHandler.stop(interaction);
+    } else if (commandName === 'list') {
+        await distubeHandler.showQueue(interaction);
     } else if (commandName === 'tts') {
         const prompt = options.getString('text');
         if (!prompt) {
@@ -149,6 +151,23 @@ client.on('messageCreate', async message => {
         if (geminiResponse.intent === 'play_music' && geminiResponse.song) {
             await message.reply(geminiResponse.response);
             await distubeHandler.playSong(message, geminiResponse.song);
+        } else if (geminiResponse.intent === 'stop_music') {
+            await message.reply(geminiResponse.response);
+            await distubeHandler.stop({ 
+                guild: message.guild,
+                reply: (msg) => message.reply(msg),
+                distube: distubeHandler.distube 
+            });
+        } else if (geminiResponse.intent === 'skip_song') {
+            await message.reply(geminiResponse.response);
+            await distubeHandler.skip({ 
+                guild: message.guild,
+                reply: (msg) => message.reply(msg),
+                distube: distubeHandler.distube 
+            });
+        } else if (geminiResponse.intent === 'show_queue') {
+            await message.reply(geminiResponse.response);
+            await distubeHandler.showQueue(message);
         } else {
             // 일반 대화 로직
             const responseText = geminiResponse.response;
