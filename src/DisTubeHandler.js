@@ -4,6 +4,7 @@ const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+const { EmbedBuilder } = require('discord.js');
 
 class DisTubeHandler {
     constructor(client) {
@@ -18,28 +19,73 @@ class DisTubeHandler {
         this.queue = new Map();
 
         this.distube.on('playSong', (queue, song) => {
-            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration}) 재생 시작!\n요청: ${song.user}`);
+            const embed = new EmbedBuilder()
+                .setColor(0x00FF00) // 초록색
+                .setDescription(`🎶 ${song.name} 재생을 시작했어요.`)
+                .addFields(
+                    { name: '곡 길이', value: song.formattedDuration, inline: true },
+                    { name: '음원', value: `[링크](${song.url})`, inline: true }
+                )
+                .setThumbnail(song.thumbnail)
+                .setFooter({
+                    text: song.user.tag,
+                    iconURL: song.user.displayAvatarURL({ dynamic: true })
+                });
+            queue.textChannel.send({ embeds: [embed] });
         });
 
         this.distube.on('addSong', (queue, song) => {
-            queue.textChannel.send(`🎶 **${song.name}** (${song.formattedDuration})이(가) 재생 목록에 추가되었습니다.\n요청: ${song.user}`);
+            const queuePosition = queue.songs.indexOf(song);
+            const queueStatus = queuePosition === 0 ? '바로 재생' : `#${queuePosition + 1}`;
+
+            const embed = new EmbedBuilder()
+                .setColor(0x0099FF) // 파란색
+                .setDescription(`🎶 ${song.name}을(를) 재생 목록에 추가했어요.`)
+                .addFields(
+                    { name: '곡 길이', value: song.formattedDuration, inline: true },
+                    { name: '대기열', value: queueStatus, inline: true },
+                    { name: '음원', value: `[링크](${song.url})`, inline: true }
+                )
+                .setThumbnail(song.thumbnail)
+                .setFooter({
+                    text: song.user.tag,
+                    iconURL: song.user.displayAvatarURL({ dynamic: true })
+                });
+            queue.textChannel.send({ embeds: [embed] });
         });
 
+
         this.distube.on('addList', (queue, playlist) => {
-            queue.textChannel.send(`🎶 재생 목록 **${playlist.name}** (${playlist.songs.length}곡)이(가) 추가되었습니다.`);
+            const embed = new EmbedBuilder()
+                .setColor(0xFFA500) // 주황색
+                .setTitle(`🎶 재생 목록 추가됨: ${playlist.name}`)
+                .setDescription(`${playlist.songs.length}곡이 재생 목록에 추가되었습니다.`);
+            queue.textChannel.send({ embeds: [embed] });
         });
 
         this.distube.on('error', (channel, error) => {
             console.error('DisTube 오류:', error);
-            channel.send('음악 재생 중 오류가 발생했습니다.');
+            const embed = new EmbedBuilder()
+                .setColor(0xFF0000) // 빨간색
+                .setTitle('❌ 음악 재생 중 오류 발생')
+                .setDescription(`오류 내용: ${error.message}`);
+            channel.send({ embeds: [embed] });
         });
 
         this.distube.on('empty', queue => {
-            queue.textChannel.send('음성 채널에 아무도 없어 연결을 종료합니다.');
+            const embed = new EmbedBuilder()
+                .setColor(0x808080) // 회색
+                .setTitle('음성 채널 비어있음')
+                .setDescription('음성 채널에 아무도 없어 연결을 종료합니다.');
+            queue.textChannel.send({ embeds: [embed] });
         });
 
         this.distube.on('finish', queue => {
-            queue.textChannel.send('재생 목록이 끝났습니다.');
+            const embed = new EmbedBuilder()
+                .setColor(0x0000FF) // 파란색
+                .setTitle('재생 목록 종료')
+                .setDescription('재생 목록이 끝났습니다.');
+            queue.textChannel.send({ embeds: [embed] });
         });
     }
 
@@ -51,17 +97,17 @@ class DisTubeHandler {
             return interaction.reply({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
         }
 
-        await interaction.reply('음악을 재생 목록에 추가하고 있습니다...');
+        await interaction.reply({ embeds: [new EmbedBuilder().setColor(0x0099FF).setDescription('음악을 재생 목록에 추가하고 있습니다...')] });
 
         try {
             await this.distube.play(voiceChannel, string, {
                 member: interaction.member,
                 textChannel: interaction.channel,
             });
-            interaction.editReply('음악 재생 요청을 처리했습니다.');
+            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription('음악 재생 요청을 처리했습니다.')] });
         } catch (e) {
             console.error(e);
-            interaction.editReply(`오류: ${e.message}`);
+            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류: ${e.message}`)] });
         }
     }
 
@@ -71,10 +117,15 @@ class DisTubeHandler {
             return interaction.reply({ content: '재생 중인 음악이 없습니다.', ephemeral: true });
         }
         try {
-            await queue.skip();
-            interaction.reply('현재 곡을 건너뛰었습니다.');
+            if (!queue.songs[1]) { // 다음 곡이 없으면
+                await queue.stop();
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription('다음 곡이 없어 재생을 중지합니다.')] });
+            } else {
+                await queue.skip();
+                interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription('현재 곡을 건너뛰었습니다.')] });
+            }
         } catch (e) {
-            interaction.reply(`오류: ${e.message}`);
+            interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류: ${e.message}`)] });
         }
     }
 
@@ -84,7 +135,7 @@ class DisTubeHandler {
             return interaction.reply({ content: '재생 중인 음악이 없습니다.', ephemeral: true });
         }
         await queue.stop();
-        interaction.reply('음악 재생을 중지하고 음성 채널에서 나갑니다.');
+        interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription('음악 재생을 중지하고 음성 채널에서 나갑니다.')] });
     }
 
     async playSong(message, songName) {
@@ -105,7 +156,7 @@ class DisTubeHandler {
             });
         } catch (e) {
             console.error(e);
-            message.reply(`오류가 발생했습니다: ${e.message}`);
+            message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류가 발생했습니다: ${e.message}`)] });
         }
     }
 
@@ -113,7 +164,7 @@ class DisTubeHandler {
         const queue = this.distube.getQueue(interactionOrMessage);
         if (!queue) {
             const reply = interactionOrMessage.reply.bind(interactionOrMessage);
-            return reply({ content: '재생 목록이 비어있습니다.', ephemeral: true });
+            return reply({ embeds: [new EmbedBuilder().setColor(0x808080).setDescription('재생 목록이 비어있습니다.')], ephemeral: true });
         }
 
         const songs = queue.songs.map((song, index) => {
@@ -124,7 +175,11 @@ class DisTubeHandler {
         }).slice(0, 10).join('\n');
 
         const replyMethod = interactionOrMessage.reply.bind(interactionOrMessage) || interactionOrMessage.channel.send.bind(interactionOrMessage.channel);
-        replyMethod(`**재생 목록**\n${songs}`);
+        const queueEmbed = new EmbedBuilder()
+            .setColor(0x00FFFF) // 청록색
+            .setTitle('🎶 현재 재생 목록')
+            .setDescription(songs || '재생 목록이 비어있습니다.');
+        replyMethod({ embeds: [queueEmbed] });
     }
 }
 

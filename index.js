@@ -151,7 +151,6 @@ client.on('messageCreate', async message => {
         const geminiResponse = await generateResponse(chat, prompt);
 
         if (geminiResponse.intent === 'play_music' && geminiResponse.song) {
-            await message.reply(geminiResponse.response);
             await distubeHandler.playSong(message, geminiResponse.song);
         } else if (geminiResponse.intent === 'stop_music') {
             await distubeHandler.stop({ 
@@ -160,14 +159,12 @@ client.on('messageCreate', async message => {
                 distube: distubeHandler.distube 
             });
         } else if (geminiResponse.intent === 'skip_song') {
-            await message.reply(geminiResponse.response);
             await distubeHandler.skip({ 
                 guild: message.guild,
                 reply: (msg) => message.reply(msg),
                 distube: distubeHandler.distube 
             });
         } else if (geminiResponse.intent === 'show_queue') {
-            await message.reply(geminiResponse.response);
             await distubeHandler.showQueue(message);
         } else {
             await sendLongMessage(message, geminiResponse.response);
