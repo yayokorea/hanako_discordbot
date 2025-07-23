@@ -1,6 +1,9 @@
 
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 
 class DisTubeHandler {
     constructor(client) {
@@ -84,6 +87,27 @@ class DisTubeHandler {
         }
         await queue.stop();
         interaction.reply('음악 재생을 중지하고 음성 채널에서 나갑니다.');
+    }
+
+    async playSong(message, songName) {
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) {
+            return message.reply('음성 채널에 먼저 참여해주세요!');
+        }
+
+        try {
+            const { stdout } = await execAsync(`yt-dlp "ytsearch:${songName}" --dump-json`);
+            const videoInfo = JSON.parse(stdout);
+            const url = videoInfo.webpage_url;
+
+            await this.distube.play(voiceChannel, url, {
+                member: message.member,
+                textChannel: message.channel,
+            });
+        } catch (e) {
+            console.error(e);
+            message.reply(`오류가 발생했습니다: ${e.message}`);
+        }
     }
 }
 

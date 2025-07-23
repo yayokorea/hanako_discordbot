@@ -1,5 +1,6 @@
 
 const { Client, GatewayIntentBits } = require('discord.js');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 require('dotenv').config();
 const config = require('./config');
 const { registerCommands } = require('./src/commands');
@@ -64,19 +65,26 @@ client.on('interactionCreate', async interaction => {
                 });
             });
 
-            // DisTube를 통해 TTS 오디오 재생
-            await distubeHandler.distube.voices.join(member.voice.channel);
-            await distubeHandler.distube.play(member.voice.channel, outputPath, {
-                member: interaction.member,
-                textChannel: interaction.channel,
-                skip: true, // TTS는 현재 재생 중인 곡을 건너뛰고 바로 재생
+            const connection = joinVoiceChannel({
+                channelId: member.voice.channel.id,
+                guildId: guildId,
+                adapterCreator: member.voice.channel.guild.voiceAdapterCreator,
             });
 
-            // 재생 후 임시 파일 삭제
-            fs.unlink(outputPath, err => {
-                if (err && err.code !== 'ENOENT') {
-                    console.error('임시 TTS 파일 삭제 오류:', err);
-                }
+            const player = createAudioPlayer();
+            const resource = createAudioResource(outputPath);
+
+            player.play(resource);
+            connection.subscribe(player);
+
+            player.on(AudioPlayerStatus.Idle, () => {
+                connection.destroy();
+                // 임시 파일 삭제
+                fs.unlink(outputPath, err => {
+                    if (err && err.code !== 'ENOENT') {
+                        console.error('임시 TTS 파일 삭제 오류:', err);
+                    }
+                });
             });
 
             if (text.length <= config.MAX_MESSAGE_LENGTH) {
@@ -133,29 +141,38 @@ client.on('messageCreate', async message => {
 
     try {
         const chat = getChat(message.channel.id);
-        const text = await generateResponse(chat, fullPrompt);
-        console.log('[사용자 질문]', fullPrompt);
-        console.log('[Gemini 응답]', text);
+        const geminiResponse = await generateResponse(chat, prompt);
+        
+        console.log('[사용자 질문]', prompt);
+        console.log('[Gemini 응답]', geminiResponse);
 
-        if (text.length <= config.MAX_MESSAGE_LENGTH) {
-            await message.reply(text);
+        if (geminiResponse.intent === 'play_music' && geminiResponse.song) {
+            await message.reply(geminiResponse.response);
+            await distubeHandler.playSong(message, geminiResponse.song);
         } else {
-            let currentMessage = '';
-            const words = text.split(' ');
-            for (const word of words) {
-                if (currentMessage.length + word.length + 1 > config.MAX_MESSAGE_LENGTH) {
-                    await message.reply(currentMessage);
-                    currentMessage = word + ' ';
-                } else {
-                    currentMessage += word + ' ';
+            // 일반 대화 로직
+            const responseText = geminiResponse.response;
+            if (responseText.length <= config.MAX_MESSAGE_LENGTH) {
+                await message.reply(responseText);
+            } else {
+                // 긴 메시지 분할 전송
+                let currentMessage = '';
+                const words = responseText.split(' ');
+                for (const word of words) {
+                    if (currentMessage.length + word.length + 1 > config.MAX_MESSAGE_LENGTH) {
+                        await message.reply(currentMessage);
+                        currentMessage = word + ' ';
+                    } else {
+                        currentMessage += word + ' ';
+                    }
                 }
-            }
-            if (currentMessage.length > 0) {
-                await message.reply(currentMessage);
+                if (currentMessage.length > 0) {
+                    await message.reply(currentMessage);
+                }
             }
         }
     } catch (error) {
-        console.error('Gemini 콘텐츠 생성 오류:', error);
+        console.error('Gemini 콘텐츠 생성 또는 메시지 처리 오류:', error);
         await message.reply('죄송합니다. 메시지를 처리하는 중 오류가 발생했습니다.');
     }
 });
