@@ -7,6 +7,28 @@ const { getChat, generateResponse } = require('../gemini');
 const { sendLongMessage } = require('../utils/messageSender');
 
 async function handleInteractionCreate(interaction, distubeHandler) {
+    if (interaction.isButton()) {
+        const [action, ...args] = interaction.customId.split('_');
+
+        if (action === 'queue') {
+            const page = parseInt(args[1], 10);
+            await distubeHandler.showQueue(interaction, page);
+        } else if (action === 'remove') {
+            await interaction.deferUpdate(); // 상호작용을 지연시킵니다.
+            const songIndex = parseInt(args[1], 10);
+            const queue = distubeHandler.distube.getQueue(interaction);
+            if (queue && queue.songs[songIndex]) {
+                const removedSong = queue.songs.splice(songIndex, 1)[0];
+                await interaction.followUp({ content: `**${removedSong.name}**을(를) 재생 목록에서 삭제했습니다.`, ephemeral: true });
+                // 기존 재생 목록 메시지를 업데이트합니다.
+                await distubeHandler.showQueue(interaction.message, 0, `**${removedSong.name}**을(를) 재생 목록에서 삭제했습니다.`); // 0페이지로 이동하여 업데이트
+            } else {
+                await interaction.followUp({ content: '해당 곡을 찾을 수 없거나 이미 삭제되었습니다.', ephemeral: true });
+            }
+        }
+        return;
+    }
+
     if (!interaction.isCommand()) return;
 
     const { commandName, options, guildId, member, channel } = interaction;
@@ -35,12 +57,14 @@ async function handleInteractionCreate(interaction, distubeHandler) {
             return interaction.reply('음성 채널에 먼저 참여해주세요!');
         }
 
+        const user = { id: interaction.user.id, username: interaction.member.displayName };
+
         const chat = getChat(interaction.channel.id);
 
         try {
             await interaction.deferReply();
 
-            const geminiResult = await generateResponse(chat, prompt);
+            const geminiResult = await generateResponse(chat, prompt, user);
 
             const outputPath = `./temp_tts_${guildId}.mp3`;
             const gttsInstance = new gtts(geminiResult.response, 'ko');

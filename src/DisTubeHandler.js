@@ -4,7 +4,7 @@ const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 class DisTubeHandler {
     constructor(client) {
@@ -19,6 +19,7 @@ class DisTubeHandler {
         this.queue = new Map();
 
         this.distube.on('playSong', (queue, song) => {
+            console.log(`[${new Date().toLocaleString('ko-KR')}] ${song.user.tag}님이 '${song.name}'을(를) 재생했습니다.`);
             const embed = new EmbedBuilder()
                 .setColor(0x0099FF) // 파란색
                 .setDescription(`🎶 ${song.name} 재생을 시작했어요.`)
@@ -216,16 +217,28 @@ class DisTubeHandler {
 
         try {
             const searchQuery = `${songName} Topic`;
-            const { stdout } = await execAsync(`yt-dlp "ytsearch:${searchQuery}" --get-id`);
+            const command = `yt-dlp "ytsearch:${searchQuery}" --get-id`;
+            console.log(`[${new Date().toLocaleString('ko-KR')}] Executing command: ${command}`);
+            const { stdout } = await execAsync(command);
             const videoId = stdout.trim();
-            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            console.log(`[${new Date().toLocaleString('ko-KR')}] yt-dlp stdout (videoId): '${videoId}'`);
 
+            if (!videoId) {
+                console.error(`[${new Date().toLocaleString('ko-KR')}] yt-dlp failed to get video ID for "${songName}"`);
+                return message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`'${songName}'에 대한 영상을 찾지 못했습니다.`)] });
+            }
+
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+            console.log(`[${new Date().toLocaleString('ko-KR')}] Constructed URL: ${url}`);
+
+            console.log(`[${new Date().toLocaleString('ko-KR')}] Calling distube.play...`);
             await this.distube.play(voiceChannel, url, {
                 member: message.member,
                 textChannel: message.channel,
             });
+            console.log(`[${new Date().toLocaleString('ko-KR')}] distube.play call succeeded.`);
         } catch (e) {
-            console.error(e);
+            console.error(`[${new Date().toLocaleString('ko-KR')}] Error in playSong function:`, e);
             message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류가 발생했습니다: ${e.message}`)] });
         }
     }
@@ -247,26 +260,76 @@ class DisTubeHandler {
         }
     }
 
-    async showQueue(interactionOrMessage) {
+    async showQueue(interactionOrMessage, page = 0, statusMessage = null) {
         const queue = this.distube.getQueue(interactionOrMessage);
         if (!queue) {
             const reply = interactionOrMessage.reply.bind(interactionOrMessage);
             return reply({ embeds: [new EmbedBuilder().setColor(0x808080).setDescription('재생 목록이 비어있습니다.')], ephemeral: true });
         }
 
-        const songs = queue.songs.map((song, index) => {
-            if (index === 0) {
+        const songsPerPage = 5;
+        const totalPages = Math.ceil(queue.songs.length / songsPerPage);
+        const start = page * songsPerPage;
+        const end = start + songsPerPage;
+
+        const songs = queue.songs.slice(start, end).map((song, index) => {
+            const songIndex = start + index;
+            if (songIndex === 0) {
                 return `**[현재 재생 중]** ${song.name} - \`${song.formattedDuration}\``;
             }
-            return `**${index}.** ${song.name} - \`${song.formattedDuration}\``;
-        }).slice(0, 10).join('\n');
+            return `**${songIndex}.** ${song.name} - \`${song.formattedDuration}\``;
+        }).join('\n');
 
-        const replyMethod = interactionOrMessage.reply.bind(interactionOrMessage) || interactionOrMessage.channel.send.bind(interactionOrMessage.channel);
-        const queueEmbed = new EmbedBuilder()
+        const embed = new EmbedBuilder()
             .setColor(0x00FFFF) // 청록색
             .setTitle('🎶 현재 재생 목록')
-            .setDescription(songs || '재생 목록이 비어있습니다.');
-        replyMethod({ embeds: [queueEmbed] });
+            .setDescription((statusMessage ? `${statusMessage}\n\n` : '') + (songs || '재생 목록이 비어있습니다.'))
+            .setFooter({ text: `페이지 ${page + 1}/${totalPages}` });
+
+        const components = [];
+        const songButtons = queue.songs.slice(start, end).map((song, index) => {
+            const songIndex = start + index;
+            if (songIndex > 0) { // 현재 재생 중인 곡은 삭제 버튼 표시 안 함
+                return new ButtonBuilder()
+                    .setCustomId(`remove_song_${songIndex}`)
+                    .setLabel(`${songIndex}번 곡 삭제`)
+                    .setStyle(ButtonStyle.Danger);
+            }
+            return null;
+        }).filter(button => button !== null);
+
+        if (songButtons.length > 0) {
+            components.push(new ActionRowBuilder().addComponents(songButtons));
+        }
+
+        const pageButtons = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`queue_page_${page - 1}`)
+                    .setLabel('이전')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === 0),
+                new ButtonBuilder()
+                    .setCustomId(`queue_page_${page + 1}`)
+                    .setLabel('다음')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page >= totalPages - 1),
+            );
+        components.push(pageButtons);
+
+        if (interactionOrMessage.isCommand && interactionOrMessage.isCommand()) {
+            // It's a command interaction (first time showing queue)
+            await interactionOrMessage.reply({ embeds: [embed], components: components });
+        } else if (interactionOrMessage.isButton && interactionOrMessage.isButton()) {
+            // It's a button interaction (page navigation or initial queue display from button)
+            await interactionOrMessage.update({ embeds: [embed], components: components });
+        } else if (interactionOrMessage.editable) { // Check if it's an editable message
+            // It's an existing message object that can be edited
+            await interactionOrMessage.edit({ embeds: [embed], components: components });
+        } else if (interactionOrMessage.channel) {
+            // It's a message object (e.g., from a message command) that needs a new reply
+            await interactionOrMessage.channel.send({ embeds: [embed], components: components });
+        }
     }
 }
 

@@ -1,4 +1,3 @@
-
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const config = require('../config');
 const axios = require('axios'); // Import axios
@@ -40,6 +39,11 @@ function getChat(channelId) {
     let chat = chats.get(channelId);
     if (!chat) {
         const systemInstruction = `You are a helpful assistant named Hanako. Your role is to understand the user's request and provide a helpful response in a specific JSON format.
+
+**User Information:**
+You will receive the user's name and ID with each message in the format: "User <username> (ID: <id>): <message>".
+You MUST remember each user by their ID and their past messages to provide personalized and continuous conversation.
+Address users by their name. Use this memory to build rapport and refer to past interactions.
 
 Analyze the user's message to determine their primary intent.
 
@@ -104,7 +108,7 @@ Your output MUST be a raw JSON string, without any markdown formatting like\`\`\
 **Your Persona (Hanako):**
 *   You are a friendly Japanese teacher.
 *   Mix Korean and Japanese in your speech.
-*   Examples: -씨/-님 -> -상/-쨩; -다 -> -다요/데스; -는 -> -와; -해서 -> -노데/카라; -의 -> -노; 일본 -> 니혼; 인간 -> 닝겐; 선배 -> 센빠이; 기분 -> 키모치; 행복 -> 시아와세; 약속 -> 야쿠소쿠; 전혀 -> 젠젠; 안 돼 -> 다메; 잠시만 -> 좃토; 네 -> 하이; 좋다 -> 이이; 맛있다 -> 우마이/오이시이; 귀엽다 -> 카와이이; 재미있다 -> 오모시로이/타노시이; -잖아 -> -쟝; -입니다 -> 데스/마스; -해주세요 -> 쿠다사이/오네가이시마스.
+*   Examples: -씨/-님 -> 상/쨩; -다 -> -다요/데스; -는 -> -와; -해서 -> -노데/카라; -의 -> -노; 일본 -> 니혼; 인간 -> 닝겐; 선배 -> 센빠이; 기분 -> 키모치; 행복 -> 시아와세; 약속 -> 야쿠소쿠; 전혀 -> 젠젠; 안 돼 -> 다메; 잠시만 -> 좃토; 네 -> 하이; 좋다 -> 이이; 맛있다 -> 우마이/오이시이; 귀엽다 -> 카와이이; 재미있다 -> 오모시로이/타노시이; -잖아 -> -쟝; -입니다 -> 데스/마스; -해주세요 -> 쿠다사이/오네가이시마스.
 *   Keep your responses short and friendly. Respond in Korean.`
 
         chat = model.startChat({
@@ -122,7 +126,7 @@ Your output MUST be a raw JSON string, without any markdown formatting like\`\`\
     return chat;
 }
 
-async function generateResponse(chat, prompt) {
+async function generateResponse(chat, prompt, user) {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1; // Month is 0-indexed
@@ -132,9 +136,11 @@ async function generateResponse(chat, prompt) {
     const seconds = currentDate.getSeconds();
     const formattedDate = `${year}년 ${month}월 ${day}일 ${hours}시 ${minutes}분 ${seconds}초`;
 
-    const promptWithDate = `(참고: 현재 날짜는 ${formattedDate}입니다.) 사용자 질문: ${prompt}`;
+    const promptWithContext = `(참고: 현재 날짜는 ${formattedDate}입니다.) User ${user.username} (ID: ${user.id}): ${prompt}`;
 
-    const result = await chat.sendMessage(promptWithDate);
+    console.log("Gemini 최종 프롬프트:", promptWithContext); // 최종 프롬프트 로깅
+
+    const result = await chat.sendMessage(promptWithContext);
     const response = await result.response;
     const text = response.text();
     console.log("Gemini 원본 응답:", text); // 응답 로깅
@@ -161,7 +167,7 @@ async function generateResponse(chat, prompt) {
             const searchOutput = await performWebSearch(searchQuery); // Use custom web search
 
             // Send the search results back to Gemini for a refined answer
-            const refinedPrompt = `사용자가 "${prompt}"라고 질문했습니다. 다음 웹 검색 결과를 바탕으로 답변해주세요:\n\n${searchOutput}\n\n한글로 답변해주세요.`;
+            const refinedPrompt = `User ${user.username} (ID: ${user.id}) asked: "${prompt}". 다음 웹 검색 결과를 바탕으로 답변해주세요:\n\n${searchOutput}\n\n한글로 답변해주세요.`;
             const refinedResult = await chat.sendMessage(refinedPrompt);
             const refinedResponse = await refinedResult.response;
             const refinedText = refinedResponse.text();
@@ -196,4 +202,3 @@ async function generateResponse(chat, prompt) {
 }
 
 module.exports = { getChat, generateResponse };
-

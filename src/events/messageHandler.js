@@ -33,8 +33,10 @@ async function handleMessageCreate(message, client, distubeHandler) {
     message.channel.sendTyping(); // 입력 중 표시
 
     try {
+        const user = { id: message.author.id, username: message.member.displayName };
+
         const chat = getChat(message.channel.id);
-        const geminiResponse = await generateResponse(chat, prompt);
+        const geminiResponse = await generateResponse(chat, prompt, user);
 
         if (geminiResponse.intent === 'play_music') {
             if (geminiResponse.url) {
