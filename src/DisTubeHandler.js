@@ -97,6 +97,11 @@ class DisTubeHandler {
             return interaction.reply({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
         }
 
+        if (!voiceChannel) {
+            console.error("음성 채널 정보를 찾을 수 없습니다.");
+            return interaction.reply({ content: '오류: 음성 채널 정보를 찾을 수 없습니다. 다시 시도해주세요.', ephemeral: true });
+        }
+
         await interaction.reply({ embeds: [new EmbedBuilder().setColor(0x0099FF).setDescription('음악을 재생 목록에 추가하고 있습니다...')] });
 
         try {

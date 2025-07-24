@@ -30,4 +30,12 @@ client.on('messageCreate', async message => {
     await handleMessageCreate(message, client, distubeHandler);
 });
 
+process.on('uncaughtException', error => {
+    console.error('처리되지 않은 예외가 발생했습니다:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('처리되지 않은 프로미스 거부가 발생했습니다:', reason);
+});
+
 client.login(config.DISCORD_BOT_TOKEN);

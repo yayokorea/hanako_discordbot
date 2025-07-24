@@ -56,7 +56,7 @@ async function handleMessageCreate(message, client, distubeHandler) {
             });
         } else if (geminiResponse.intent === 'show_queue') {
             await distubeHandler.showQueue(message);
-        } else {
+        } else if (geminiResponse.response) {
             await sendLongMessage(message, geminiResponse.response);
         }
     } catch (error) {
