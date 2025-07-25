@@ -8,29 +8,39 @@ const { sendLongMessage } = require('../utils/messageSender');
 
 async function handleInteractionCreate(interaction, distubeHandler) {
     if (interaction.isButton()) {
+        console.log(`[${new Date().toLocaleString('ko-KR')}] Button interaction detected. Custom ID: ${interaction.customId}`);
         const [action, ...args] = interaction.customId.split('_');
+        console.log(`[${new Date().toLocaleString('ko-KR')}] Parsed action: ${action}, args: ${JSON.stringify(args)}`);
 
         if (action === 'queue') {
             const page = parseInt(args[1], 10);
             await distubeHandler.showQueue(interaction, page);
-        } else if (action === 'select_song') {
+        } else if (action === 'select' && args[0] === 'song') {
+            console.log(`[${new Date().toLocaleString('ko-KR')}] Attempting to defer update for select_song.`);
             await interaction.deferUpdate();
-            const videoId = args[0];
+            console.log(`[${new Date().toLocaleString('ko-KR')}] Defer update successful for select_song.`);
+            const videoId = args[1];
+            console.log(`[${new Date().toLocaleString('ko-KR')}] select_song 버튼 클릭: videoId=${videoId}`);
             const url = `https://www.youtube.com/watch?v=${videoId}`;
 
             const voiceChannel = interaction.member.voice.channel;
             if (!voiceChannel) {
+                console.log(`[${new Date().toLocaleString('ko-KR')}] 음성 채널에 없음.`);
                 return interaction.followUp({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
             }
 
             try {
+                console.log(`[${new Date().toLocaleString('ko-KR')}] distube.play 호출 시도: url=${url}`);
                 await distubeHandler.distube.play(voiceChannel, url, {
                     member: interaction.member,
                     textChannel: interaction.channel,
                 });
-                await interaction.message.delete(); // 검색 결과 메시지 삭제
+                console.log(`[${new Date().toLocaleString('ko-KR')}] distube.play 성공.`);
+                await interaction.followUp({ content: `선택하신 곡이 재생 목록에 추가되었습니다.`, ephemeral: true });
+                console.log(`[${new Date().toLocaleString('ko-KR')}] followUp 메시지 전송 성공.`);
+                // await interaction.message.delete(); // 검색 결과 메시지 삭제 (디버깅을 위해 임시 주석 처리)
             } catch (e) {
-                console.error('Error playing selected song:', e);
+                console.error(`[${new Date().toLocaleString('ko-KR')}] Error playing selected song:`, e);
                 await interaction.followUp({ content: `선택한 곡을 재생하는 중 오류가 발생했습니다: ${e.message}`, ephemeral: true });
             }
         } else if (action === 'remove') {

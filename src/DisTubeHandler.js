@@ -100,19 +100,28 @@ class DisTubeHandler {
         }
 
         const videoIds = stdout.trim().split('\n').filter(id => id.length > 0);
+        console.log(`[${new Date().toLocaleString('ko-KR')}] Found video IDs: ${videoIds.join(', ')}`);
         const videos = [];
 
         for (const id of videoIds) {
             try {
-                const { stdout: videoInfoStdout } = await execAsync(`yt-dlp --dump-json https://www.youtube.com/watch?v=${id}`);
-                videos.push(JSON.parse(videoInfoStdout));
+                const { stdout: videoInfoStdout } = await execAsync(`yt-dlp --get-title --get-thumbnail https://www.youtube.com/watch?v=${id}`);
+                const [title, thumbnail] = videoInfoStdout.trim().split('\n');
+                videos.push({ id, title, thumbnail });
+                console.log(`[${new Date().toLocaleString('ko-KR')}] Fetched info for ID ${id}: Title="${title}", Thumbnail="${thumbnail}"`);
             } catch (e) {
                 console.error(`[${new Date().toLocaleString('ko-KR')}] Failed to get info for video ID ${id}, Error: ${e.message}`);
             }
         }
 
+        console.log(`[${new Date().toLocaleString('ko-KR')}] Final videos array: ${JSON.stringify(videos)}`);
+
         if (videos.length === 0) {
-            await interactionOrMessage.editReply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`'${query}'에 대한 검색 결과를 찾지 못했습니다.`)] });
+            if (interactionOrMessage.editReply) {
+                await interactionOrMessage.editReply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`'${query}'에 대한 검색 결과를 찾지 못했습니다.`)] });
+            } else {
+                await interactionOrMessage.channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`'${query}'에 대한 검색 결과를 찾지 못했습니다.`)] });
+            }
             return;
         }
 
@@ -120,11 +129,10 @@ class DisTubeHandler {
             return new EmbedBuilder()
                 .setColor(0x0099FF)
                 .setTitle(`${index + 1}. ${video.title}`)
-                .setURL(video.webpage_url)
+                .setURL(`https://www.youtube.com/watch?v=${video.id}`)
                 .setThumbnail(video.thumbnail)
                 .addFields(
-                    { name: '업로더', value: video.uploader || '알 수 없음', inline: true },
-                    { name: '재생 시간', value: video.duration_string || '알 수 없음', inline: true }
+                    { name: 'ID', value: video.id, inline: true }
                 );
         });
 
@@ -138,11 +146,19 @@ class DisTubeHandler {
                 )
             );
 
-        await interactionOrMessage.editReply({
-            content: `'${query}'에 대한 검색 결과입니다. 재생할 곡을 선택해주세요.`,
-            embeds: embeds,
-            components: [buttons],
-        });
+        if (interactionOrMessage.editReply) {
+            await interactionOrMessage.editReply({
+                content: `'${query}'에 대한 검색 결과입니다. 재생할 곡을 선택해주세요.`,
+                embeds: embeds,
+                components: [buttons],
+            });
+        } else {
+            await interactionOrMessage.channel.send({
+                content: `'${query}'에 대한 검색 결과입니다. 재생할 곡을 선택해주세요.`,
+                embeds: embeds,
+                components: [buttons],
+            });
+        }
     }
 
     async play(interaction) {

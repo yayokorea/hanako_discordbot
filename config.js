@@ -7,5 +7,5 @@ module.exports = {
     GOOGLE_API_KEY: process.env.GOOGLE_API_KEY, // Google Custom Search API Key
     CSE_ID: process.env.GOOGLE_CSE_ID, // Custom Search Engine ID
     MAX_MESSAGE_LENGTH: 2000, // Discord 메시지 최대 길이
-    BOT_KEYWORDS: ['하나코', 'はなこ', '花子'],
+    BOT_KEYWORDS: ['하나코', 'はなこ', '花子', 'hanako'],
 };
