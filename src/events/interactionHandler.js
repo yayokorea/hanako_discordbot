@@ -13,6 +13,26 @@ async function handleInteractionCreate(interaction, distubeHandler) {
         if (action === 'queue') {
             const page = parseInt(args[1], 10);
             await distubeHandler.showQueue(interaction, page);
+        } else if (action === 'select_song') {
+            await interaction.deferUpdate();
+            const videoId = args[0];
+            const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+            const voiceChannel = interaction.member.voice.channel;
+            if (!voiceChannel) {
+                return interaction.followUp({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
+            }
+
+            try {
+                await distubeHandler.distube.play(voiceChannel, url, {
+                    member: interaction.member,
+                    textChannel: interaction.channel,
+                });
+                await interaction.message.delete(); // 검색 결과 메시지 삭제
+            } catch (e) {
+                console.error('Error playing selected song:', e);
+                await interaction.followUp({ content: `선택한 곡을 재생하는 중 오류가 발생했습니다: ${e.message}`, ephemeral: true });
+            }
         } else if (action === 'remove') {
             await interaction.deferUpdate(); // 상호작용을 지연시킵니다.
             const songIndex = parseInt(args[1], 10);

@@ -90,27 +90,86 @@ class DisTubeHandler {
         });
     }
 
+    async handleMusicSearchAndSelection(interactionOrMessage, query, voiceChannel, member, textChannel) {
+        const command = `yt-dlp "ytsearch3:${query}" --get-id`;
+        console.log(`[${new Date().toLocaleString('ko-KR')}] Executing command: ${command}`);
+        const { stdout, stderr } = await execAsync(command);
+
+        if (stderr) {
+            console.error(`[${new Date().toLocaleString('ko-KR')}] yt-dlp stderr: ${stderr}`);
+        }
+
+        const videoIds = stdout.trim().split('\n').filter(id => id.length > 0);
+        const videos = [];
+
+        for (const id of videoIds) {
+            try {
+                const { stdout: videoInfoStdout } = await execAsync(`yt-dlp --dump-json https://www.youtube.com/watch?v=${id}`);
+                videos.push(JSON.parse(videoInfoStdout));
+            } catch (e) {
+                console.error(`[${new Date().toLocaleString('ko-KR')}] Failed to get info for video ID ${id}, Error: ${e.message}`);
+            }
+        }
+
+        if (videos.length === 0) {
+            await interactionOrMessage.editReply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setDescription(`'${query}'에 대한 검색 결과를 찾지 못했습니다.`)] });
+            return;
+        }
+
+        const embeds = videos.map((video, index) => {
+            return new EmbedBuilder()
+                .setColor(0x0099FF)
+                .setTitle(`${index + 1}. ${video.title}`)
+                .setURL(video.webpage_url)
+                .setThumbnail(video.thumbnail)
+                .addFields(
+                    { name: '업로더', value: video.uploader || '알 수 없음', inline: true },
+                    { name: '재생 시간', value: video.duration_string || '알 수 없음', inline: true }
+                );
+        });
+
+        const buttons = new ActionRowBuilder()
+            .addComponents(
+                videos.map((video, index) =>
+                    new ButtonBuilder()
+                        .setCustomId(`select_song_${video.id}`)
+                        .setLabel(`${index + 1}번 선택`)
+                        .setStyle(ButtonStyle.Primary)
+                )
+            );
+
+        await interactionOrMessage.editReply({
+            content: `'${query}'에 대한 검색 결과입니다. 재생할 곡을 선택해주세요.`,
+            embeds: embeds,
+            components: [buttons],
+        });
+    }
+
     async play(interaction) {
-        const string = interaction.options.getString('url');
+        const url = interaction.options.getString('url');
+        const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
 
         if (!voiceChannel) {
             return interaction.reply({ content: '음성 채널에 먼저 참여해주세요!', ephemeral: true });
         }
 
-        if (!voiceChannel) {
-            console.error("음성 채널 정보를 찾을 수 없습니다.");
-            return interaction.reply({ content: '오류: 음성 채널 정보를 찾을 수 없습니다. 다시 시도해주세요.', ephemeral: true });
+        if (!url && !query) {
+            return interaction.reply({ content: '재생할 음악의 URL 또는 검색어를 입력해주세요.', ephemeral: true });
         }
 
-        await interaction.reply({ embeds: [new EmbedBuilder().setColor(0x0099FF).setDescription('음악을 재생 목록에 추가하고 있습니다...')] });
+        await interaction.deferReply(); // 응답을 지연시켜 봇이 생각할 시간을 줍니다.
 
         try {
-            await this.distube.play(voiceChannel, string, {
-                member: interaction.member,
-                textChannel: interaction.channel,
-            });
-            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription('음악 재생 요청을 처리했습니다.')] });
+            if (url) {
+                await this.distube.play(voiceChannel, url, {
+                    member: interaction.member,
+                    textChannel: interaction.channel,
+                });
+                await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x00FF00).setDescription('음악 재생 요청을 처리했습니다.')] });
+            } else if (query) {
+                await this.handleMusicSearchAndSelection(interaction, query, voiceChannel, interaction.member, interaction.channel);
+            }
         } catch (e) {
             console.error(e);
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류: ${e.message}`)] });
@@ -215,32 +274,8 @@ class DisTubeHandler {
             return message.reply('음성 채널에 먼저 참여해주세요!');
         }
 
-        try {
-            const searchQuery = `${songName} Topic`;
-            const command = `yt-dlp "ytsearch:${searchQuery}" --get-id`;
-            console.log(`[${new Date().toLocaleString('ko-KR')}] Executing command: ${command}`);
-            const { stdout } = await execAsync(command);
-            const videoId = stdout.trim();
-            console.log(`[${new Date().toLocaleString('ko-KR')}] yt-dlp stdout (videoId): '${videoId}'`);
-
-            if (!videoId) {
-                console.error(`[${new Date().toLocaleString('ko-KR')}] yt-dlp failed to get video ID for "${songName}"`);
-                return message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`'${songName}'에 대한 영상을 찾지 못했습니다.`)] });
-            }
-
-            const url = `https://www.youtube.com/watch?v=${videoId}`;
-            console.log(`[${new Date().toLocaleString('ko-KR')}] Constructed URL: ${url}`);
-
-            console.log(`[${new Date().toLocaleString('ko-KR')}] Calling distube.play...`);
-            await this.distube.play(voiceChannel, url, {
-                member: message.member,
-                textChannel: message.channel,
-            });
-            console.log(`[${new Date().toLocaleString('ko-KR')}] distube.play call succeeded.`);
-        } catch (e) {
-            console.error(`[${new Date().toLocaleString('ko-KR')}] Error in playSong function:`, e);
-            message.reply({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('오류 발생').setDescription(`오류가 발생했습니다: ${e.message}`)] });
-        }
+        await message.channel.sendTyping(); // 입력 중 표시
+        await this.handleMusicSearchAndSelection(message, songName, voiceChannel, message.member, message.channel);
     }
 
     async playUrlFromMessage(message, url) {

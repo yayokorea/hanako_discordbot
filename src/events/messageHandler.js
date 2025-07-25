@@ -42,7 +42,12 @@ async function handleMessageCreate(message, client, distubeHandler) {
             if (geminiResponse.url) {
                 await distubeHandler.playUrlFromMessage(message, geminiResponse.url);
             } else if (geminiResponse.song) {
-                await distubeHandler.playSong(message, geminiResponse.song);
+                const voiceChannel = message.member.voice.channel;
+                if (!voiceChannel) {
+                    return message.reply('음성 채널에 먼저 참여해주세요!');
+                }
+                await message.channel.sendTyping();
+                await distubeHandler.handleMusicSearchAndSelection(message, geminiResponse.song, voiceChannel, message.member, message.channel);
             }
         } else if (geminiResponse.intent === 'stop_music') {
             await distubeHandler.stop({ 
