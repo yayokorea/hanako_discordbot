@@ -101,20 +101,20 @@ class DisTubeHandler {
 
         const videoIds = stdout.trim().split('\n').filter(id => id.length > 0);
         console.log(`[${new Date().toLocaleString('ko-KR')}] Found video IDs: ${videoIds.join(', ')}`);
-        const videos = [];
 
-        for (const id of videoIds) {
+        const videoPromises = videoIds.map(async (id) => {
             try {
                 const { stdout: videoInfoStdout } = await execAsync(`yt-dlp --get-title --get-thumbnail https://www.youtube.com/watch?v=${id}`);
                 const [title, thumbnail] = videoInfoStdout.trim().split('\n');
-                videos.push({ id, title, thumbnail });
                 console.log(`[${new Date().toLocaleString('ko-KR')}] Fetched info for ID ${id}: Title="${title}", Thumbnail="${thumbnail}"`);
+                return { id, title, thumbnail };
             } catch (e) {
                 console.error(`[${new Date().toLocaleString('ko-KR')}] Failed to get info for video ID ${id}, Error: ${e.message}`);
+                return null;
             }
-        }
+        });
 
-        console.log(`[${new Date().toLocaleString('ko-KR')}] Final videos array: ${JSON.stringify(videos)}`);
+        const videos = (await Promise.all(videoPromises)).filter(Boolean);
 
         if (videos.length === 0) {
             if (interactionOrMessage.editReply) {
